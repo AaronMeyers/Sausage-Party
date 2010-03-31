@@ -1,0 +1,349 @@
+<!doctype html>
+<html>
+  <head>
+	<link type="text/css" rel="stylesheet" href="sausage_styles.css" /> 
+	<link type="text/css" rel="stylesheet" href="jqModal.css" /> 
+    <script type="text/javascript" src="jquery-1.4.2.min.js"></script> 
+    <script type="text/javascript" src="jqModal.js"></script>
+  </head>
+  <body>
+  
+	<script src="http://static.ak.connect.facebook.com/js/api_lib/v0.4/FeatureLoader.js.php" type="text/javascript"></script>
+    <script type="text/javascript">
+    var count = 0;
+    var api;
+    var event = new Array();
+    var eventCount = 0;
+    var batchSize = 20;
+    var userEvents = new Array();
+    var totalAttendees;
+	var num_males = 0;
+	var num_females = 0;
+	var num_unspecified = 0;
+	var manualMode = true;
+    
+	$(document).ready(function(){
+		$('#chooser').hide();
+		$("#dialog").jqm();
+		$('#form').hide();
+		$('#load_my_events').click(function(event){
+			lookupUserEvents();
+			});
+			
+		$('#enter_events_manually').click(function(event){
+			startManualMode();
+			});
+	
+		var api_key = 'bd7a6e19c62964e8e4c5c44713cba0b4';
+		var channel_path = 'Relative channel path here';
+		
+		var myDate = new Date();
+		
+		FB_RequireFeatures(["Api"], function(){
+		
+			FB.Facebook.init(api_key, channel_path);
+			api = FB.Facebook.apiClient;
+			session = api.get_session();
+			if (!session)
+			{
+				//api.requireLogin();
+
+				var warning = "<div class='warning'>Sausage Party looks at your upcoming Facebook events and, using a rigorous and very scientific process, assesses their respective sausage ratings on a 0 to 5 sausage scale.<br/><br/>In order to do this, Sausage Party needs you to allow it to access your information on Facebook. I promise Sausage Party won't do anything lame like spam your friends or post stuff on your wall.<br/><br/>Are you ready to get momentarily redirected to Facebook to allow Sausage Party to do its very important work?</div><form id=\"redirect\"><input type=\"submit\" id=\"ready_to_redirect\" value=\"Yes, I\'m ready.\" /></form>";
+				
+				$(warning).prependTo( $('#events') );
+				
+				$('#redirect').submit( function() {
+					//alert('redirecting ' + api);
+					api.requireLogin();
+					return false;
+				});
+				
+			}
+			else
+			{
+				$('#chooser').show();
+				//alert("blah" + session.uid);
+			}
+		});
+		
+		$('#loader').fadeTo(0, 0);
+	
+		$('#target').submit(function() {
+			
+		
+			var event_url = $("#event_url").val();
+			$("#event_url").val("");
+			
+			var objURL = new Object();
+			
+			event_url.replace( new RegExp( "([^?=&]+)(=([^&]*))?", "g" ),
+			function( $0, $1, $2, $3) {
+				objURL[$1] = $3;
+			}
+			);
+			
+			var eid = objURL['eid'];
+			
+			if (eid)
+				lookupEvent(eid);
+			else
+				$("#event_url").val("Enter a Facebook event URL here...");
+			return false;
+		});
+	});
+	
+	function lookupUserEvents()
+	{
+		manualMode = false;
+		$('#chooser').hide();
+		$('#form').show();
+		$('#submit').attr('disabled', true);
+		$('#event_url').attr('disabled', true);
+		$('#event_url').hide();
+		$('#loader').fadeTo(500, 1);
+		setStatus("RETRIEVING YOUR EVENTS");
+		var startDate = new Date();
+		var utc = Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate()) / 1000;
+		api.events_get('', '', utc, '', '', onUserEventsGetComplete);
+	}
+	
+	function startManualMode()
+	{
+		$('#chooser').hide();
+		$('#form').show();
+	
+	}
+	
+	function lookupEvent(eid)
+	{
+		
+		num_males = 0;
+		num_females = 0;
+		num_unspecified = 0;
+		
+		setStatus("LOOKING UP EVENT");
+		$('#loader').fadeTo(500, 1);
+		$('#submit').attr('disabled', true);
+		$('#event_url').attr('disabled', true);
+		api.events_get('', eid, '', '', '', onEventGetComplete);
+	}
+	
+	function onUserEventsGetComplete(result, exception)
+	{
+		for (var i=0; i<result.length; i++)
+		{
+			userEvents.push( result[i]["eid"] );
+		}
+		
+		if (userEvents.length > 0)
+		{
+			lookupEvent( userEvents.pop() );
+		}
+	}
+	
+	function onEventGetComplete(result, exception)
+	{
+		setStatus("COLLECTING ATTENDEES");
+		var event_info = result[0];
+		var event_name = event_info["name"];
+		var event_id = event_info["eid"];
+		var event_pic = event_info["pic_small"];
+		
+		event["name"] = event_name;
+		event["id"] = event_id;
+		event["pic"] = event_pic;
+		event["start_time"] = event_info["start_time"];
+		event["end_time"] = event_info["end_time"];
+		event["tagline"] = event_info["tagline"];
+		
+		//$('<div>' + event_name + '\t' + event_id + '</div>').prependTo( $('#events') );
+		
+		api.events_getMembers(event_id, onEventGetMembersComplete);
+	}
+	
+	function onEventGetMembersComplete(result, exception)
+	{
+		var attending = result["attending"];
+		var attSplit = new String(attending).split(",");
+		
+		totalAttendees = attSplit.length;
+		
+		event["attendees"] = attSplit;
+		
+		getAttendeeSexes();
+		
+		//api.users_getInfo(attSplit, 'sex', onUsersGetInfoComplete);
+	}
+	
+	function getAttendeeSexes()
+	{
+		var percentage = ((num_males+num_females+num_unspecified) / totalAttendees) * 100;
+		setStatus("ENUMERATING SAUSAGES " + Math.round(percentage) + "%");
+		
+		var attendees = event["attendees"];
+		var uids = attendees.splice(0, batchSize);
+		
+		
+		api.users_getInfo(uids, 'sex', onUsersGetInfoComplete);
+	}
+	
+	function onUsersGetInfoComplete(result, exception)
+	{
+		for (var i=0; i<result.length; i++)
+		{
+			var user_info = result[i];
+			if (user_info["sex"] == "male")
+				num_males++;
+			else if (user_info["sex"] == "female")
+				num_females++;
+			else
+				num_unspecified++;
+		}
+	
+		var attendees = event["attendees"];
+		if (attendees.length > 0)
+		{
+			getAttendeeSexes();
+			return;
+		}
+	
+		setStatus("ANALYZE SAUSAGEOCITY");
+		$('#submit').attr('disabled', false);
+		$('#event_url').attr('disabled', false);
+		$('#loader').fadeTo(500, 0);
+		if (result==null)
+		{
+			alert(exception);
+		}
+		
+		var sausage_percentage = (num_males / (num_males + num_females)) * 100.0;
+		
+		event["sausage_percentage"] = sausage_percentage;
+		
+		var normalSausage = '<img class="rating_sausage" src="mini_sausage2.png">';
+		var fadedSausage = '<img class="rating_sausage" src="mini_sausage2.png" style="opacity:0.25;filter:alpha(opacity=25)">';
+		
+		var d = new Date();
+		var startDate = new Date( (event["start_time"] * 1000) - d.getTimezoneOffset() * 60 * 1000);
+		
+		var eventDiv = '';
+		
+		eventDiv += '<div id="eventDiv' + eventCount + '" class="event">';
+		
+		eventDiv += '<div class="sausage_container">'
+		eventDiv += '<div id="sausages" class="sausages">'
+		eventDiv += '<div class="eventpic"><img src="' + event["pic"] + '"></div>';
+		eventDiv += sausage_percentage >= 55.0 ? normalSausage : fadedSausage;
+		eventDiv += sausage_percentage >= 65.0 ? normalSausage : fadedSausage;
+		eventDiv += sausage_percentage >= 75.0 ? normalSausage : fadedSausage;
+		eventDiv += sausage_percentage >= 85.0 ? normalSausage : fadedSausage;
+		eventDiv += sausage_percentage >= 95.0 ? normalSausage : fadedSausage;
+		if (sausage_percentage >= 95.0)
+			eventDiv += "<img src=\"sausagefest.gif\" class=\"sausagefest\"/>";
+		eventDiv += '</div>';
+		eventDiv += '</div>';
+				
+		var weekday=new Array(7);
+		weekday[0]="Sunday";
+		weekday[1]="Monday";
+		weekday[2]="Tuesday";
+		weekday[3]="Wednesday";
+		weekday[4]="Thursday";
+		weekday[5]="Friday";
+		weekday[6]="Saturday";
+		
+		var month=new Array(12);
+		month[0]="January";
+		month[1]="February";
+		month[2]="March";
+		month[3]="April";
+		month[4]="May";
+		month[5]="June";
+		month[6]="July";
+		month[7]="August";
+		month[8]="September";
+		month[9]="October";
+		month[10]="November";
+		month[11]="December";
+		
+		eventDiv += '<div class="event_text" style="margin-bottom:4px;">'
+		eventDiv += '<a href="http://www.facebook.com/event.php?eid=' + event["id"] + '" target="_blank">' + event["name"] + '</a>';
+//		eventDiv += event["name"] + "<br/><br/>";
+		eventDiv += '</div>';
+		eventDiv += '<div style="font-weight:normal; color: #A52A2A;">' + weekday[startDate.getUTCDay()] +', ' + startDate.getUTCDate() + ' ' + month[startDate.getUTCMonth()] + ' ' + startDate.getUTCFullYear() + '</div>';
+		eventDiv += '<div style="font-weight:normal; font-size: 10pt;">' + event["tagline"] + '</div>';
+		// close out the event div
+		eventDiv += '</div>';
+		
+		$(eventDiv).prependTo( $('#events') );
+		
+		$('#eventDiv' + eventCount).hide();
+		
+		$('#eventDiv' + eventCount).slideDown('slow');
+		
+		eventCount++;
+		
+		if (userEvents.length > 0)
+		{
+			lookupEvent(userEvents.pop());
+		}
+		else if (!manualMode && userEvents.length == 0)
+		{
+			manualMode = true;
+			$('#event_url').fadeIn('slow');
+		}
+	}
+	
+	function setStatus(status)
+	{
+		$('#submit').attr('value', status);
+	}
+    </script>
+    
+    <div id="header">
+	    <img src="sausage_header.png"><br/>
+	</div>
+	
+	<div id="chooser">
+		<a href="#" id="load_my_events">Load my events</a> | <a href="#" id="enter_events_manually">Enter events manually</a>
+	</div>
+	
+	<div id="form">
+		<div id="loader"><img src="sausage_loader.gif"></div>
+		<form id="target">
+			<input type="text" size="60" id="event_url" name="event_url" value="Enter a Facebook event URL here..." style="text-align:center; font-size: 16pt; width: 500px;" />
+			<br/>
+			<input type="submit" id="submit" value="ANALYZE SAUSAGEOCITY" style="font-size: 16pt; margin-top: 10px;"/>
+		</form>
+	</div>
+
+  <div id="events">
+  
+  </div>
+  
+  <div width="324" height="25" class="about"><a href="#" class="jqModal">About</a></div> 
+  
+	<div class="jqmWindow" id="dialog">
+		<div class="dialog">
+		<h2>About Sausage Party</h2>
+		<br/><br/>
+		Sausage Party looks at your upcoming Facebook events and, using a rigorous and very scientific process, assesses their respective sausage ratings on a 0 to 5 sausage scale.
+		<ul>
+		<li>0 sausages	= less than 55% male attendees</li>
+		<li>1 sausage	= between 55% and 65% male attendees</li>
+		<li>2 sausages	= between 65% and 75% male attendees</li>
+		<li>3 sausages	= between 75% and 85% male attendees</li>
+		<li>4 sausages	= between 85% and 95% male attendees</li>
+		<li>5 sausages	= 95% or more male attendees (an all-out sausagefest)</li>
+		</ul>
+		Sausage Party was created by <a href="http://aaron-meyers.com" target="_blank">Aaron Meyers</a> and produced with the support of <a href="http://eyebeam.org" target="_blank">Eyebeam Art and Technology Center</a>.
+		<br/><br/>
+		Feel free to follow Aaron on <a href="http://twitter.com/aarontweets" target="_blank">Twitter</a> and <a href="http://aaronmeyers.tumblr.com" target="_blank">Tumblr</a>.
+		<br /><br />
+		Sausage Party was created using <a href="http://jquery.com" target="_blank">jQuery</a> and <a href="http://dev.iceburg.net/jquery/jqModal/" target="_blank">jqModal</a>. The sloppy and soon-to-be-cleaned-up source code <a href="http://github.com/AaronMeyers/Sausage-Party">is on github</a>.
+		<br /><br />
+		Special thanks to <a href="http://visitsteve.com" target="_blank">Steve Lambert</a> for his CSS help and <a href="http://jeffcrouse.info" target="_blank">Jeff Crouse</a> for his blingee easter egg contribution.
+		</div>
+	</div>
+  </body>
+</html>

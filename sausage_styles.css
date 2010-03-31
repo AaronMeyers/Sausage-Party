@@ -1,0 +1,178 @@
+body {
+       font-family: Helvetica, Arial, sans;
+       text-align:center;
+       width:700px;
+       margin: 0 auto;
+       }
+h2 {
+	display: inline;
+	font-size: 18;
+	padding: 0px;
+}
+#header {
+       text-align: center;
+       margin-bottom: -80px;
+       }
+#form {
+       text-align: center;
+       }
+
+#events {
+       position: relative;
+       text-align: center;
+       width: 700px;
+       margin: 0;
+       }
+
+/* @group event classes */
+
+.event {
+       background-color:#ffffff;
+       text-align: left;
+       width: 500px;
+       margin-bottom: 10px;
+       margin-top: 10px;
+       margin-left:90px;
+       padding:10px;
+       border-style: solid;
+       border-color: #A52A2A;
+       border-width: 1px;
+       font-weight: bold;
+}
+.event:hover {
+       background-color: #eeeeee;
+       }
+.event a {
+       text-decoration: none;
+       border-bottom-width: 1px;
+       border-bottom-style: dotted;
+       color: #000000;
+}
+.event a:hover {
+       text-decoration: none;
+       border-bottom-width: 1px;
+       border-bottom-style: solid;
+       border-bottom-color: #A52A2A;
+       color: #A52A2A;
+       }
+
+.event_text {
+}
+
+/* @end */
+
+/* @group sausage image classes */
+.about {
+	position: absolute;
+	z-index: 1337;
+	top: 0px;
+	right:5px;
+	border:0px;
+	background-color:transparent;
+	overflow:hidden;
+	font-weight: bold;
+}
+
+.about a {
+	color: #000000;
+	text-decoration: none;
+}
+
+.about a:hover {
+	color: #A52A2A;
+	text-decoration: none;
+}
+
+.dialog {
+	padding: 12px;
+	text-align: left;
+	opacity: 1;
+	filter:alpha(opacity=100);
+}
+
+.dialog a {
+       text-decoration: none;
+       border-bottom-width: 1px;
+       border-bottom-style: dotted;
+       color: #A52A2A;
+}
+
+.dialog a:hover {
+       text-decoration: none;
+       border-bottom-width: 1px;
+       border-bottom-style: solid;
+       border-bottom-color: #000000;
+       color: #000000;
+}
+
+.warning {
+	width: 500px;
+	text-align: justify;
+	margin-top: 100px;
+    margin-bottom: 10px;
+    margin-left:90px;
+}
+
+.eventpic {
+       display:inline;
+}
+
+.eventpic img {
+       margin-right: 20px;
+       border-style:solid;
+       border-width: 1px;
+       vertical-align: middle;
+       top: 50%;
+       margin-bottom: 4em;
+}
+
+div.sausage_container {
+       position: relative;
+       height: 75px;
+}
+
+#chooser {
+	margin-top:60px;
+}
+
+#chooser a {
+	text-decoration: none;
+       border-bottom-width: 1px;
+       border-bottom-style: dotted;
+       border-bottom-color: #000000;
+       color: #000000;
+}
+
+#chooser a:hover {
+       text-decoration: none;
+       border-bottom-width: 1px;
+       border-bottom-style: solid;
+       border-bottom-color: #A52A2A;
+       color: #A52A2A;
+}
+
+#sausages {
+       height:4.5em;
+       position: absolute;
+       display: block;
+}
+
+.sausagefest {
+	margin-left:30px;
+}
+
+.sausages img {
+
+       }
+
+.rating_sausage {
+       margin-right: -17px;
+       display: inline;
+       vertical-align: middle;
+       top: 50%;
+       margin-bottom: 3.5em;
+}
+
+/* @end */
+
+/* Steve Lambert hacked this CSS. It may not be done right, but it works, kinda. */
